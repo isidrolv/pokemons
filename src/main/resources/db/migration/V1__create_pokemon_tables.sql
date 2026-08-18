@@ -5,7 +5,7 @@ CREATE TABLE pokemon (
     height      DOUBLE,
     weight      DOUBLE,
     description TEXT,
-    synced_at   DATETIME(6)     NOT NULL,
+    synced_at   TIMESTAMP(6)    NOT NULL,
     PRIMARY KEY (id),
     UNIQUE KEY uq_pokemon_name (name)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
