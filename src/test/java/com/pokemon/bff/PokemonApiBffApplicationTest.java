@@ -8,13 +8,7 @@ class PokemonApiBffApplicationTest {
 
     @Test
     void testMain() {
-
-        try {
-            PokemonApiBffApplication.main(new String[]{});
-            assertTrue(true);
-        } catch (Exception e) {
-            System.out.println("The main method should not throw an exception: " + e.getMessage());
-        }
-
+        org.junit.jupiter.api.Assertions.assertDoesNotThrow(() ->
+                PokemonApiBffApplication.main(new String[]{}));
     }
 }
