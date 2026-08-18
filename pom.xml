@@ -18,7 +18,12 @@
         <license/>
     </licenses>
     <developers>
-        <developer/>
+        <developer>
+            <name>Isidro Leos Viscencio</name>
+            <email>isidrolv@gmail.com</email>
+            <organization>ILV Consulting</organization>
+            <organizationUrl>https://isidrolv.io</organizationUrl>
+        </developer>
     </developers>
     <scm>
         <connection/>
