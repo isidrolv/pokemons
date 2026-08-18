@@ -114,6 +114,9 @@ public class PokemonService {
         if (slashIndex < 0 || slashIndex == normalizedUrl.length() - 1) {
             throw new IllegalStateException("Invalid evolution chain URL: " + url);
         }
-        return Integer.parseInt(normalizedUrl.substring(slashIndex + 1));
-    }
+        try {
+            return Integer.parseInt(normalizedUrl.substring(slashIndex + 1));
+        } catch (NumberFormatException e) {
+            throw new IllegalStateException("Invalid evolution chain URL: " + url, e);
+        }
 }
