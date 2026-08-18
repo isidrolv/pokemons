@@ -1,25 +1,9 @@
 package com.pokemon.bff.service;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 import com.pokemon.bff.client.PokemonClient;
-import com.pokemon.bff.client.dto.EvolutionChainResponse;
-import com.pokemon.bff.client.dto.PokemonDetailsResponse;
-import com.pokemon.bff.client.dto.PokemonListResponse;
-import com.pokemon.bff.client.dto.PokemonReference;
-import com.pokemon.bff.client.dto.PokemonSpeciesResponse;
+import com.pokemon.bff.client.dto.*;
 import com.pokemon.bff.dto.PokemonDetail;
 import com.pokemon.bff.dto.PokemonItem;
-import java.util.List;
-
-import com.pokemon.bff.service.PokemonService;
 import com.pokemon.bff.sync.PokemonSyncService;
 import net.datafaker.Faker;
 import org.junit.jupiter.api.Test;
@@ -27,6 +11,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class PokemonServiceTest {

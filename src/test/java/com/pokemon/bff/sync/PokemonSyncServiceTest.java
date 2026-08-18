@@ -1,18 +1,8 @@
 package com.pokemon.bff.sync;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-import com.pokemon.bff.dto.EvolutionNode;
-import com.pokemon.bff.dto.PokemonDetail;
-import com.pokemon.bff.dto.PokemonItem;
-import com.pokemon.bff.dto.PokemonStat;
-import com.pokemon.bff.dto.Skill;
+import com.pokemon.bff.dto.*;
 import com.pokemon.bff.persistence.entity.PokemonEntity;
 import com.pokemon.bff.persistence.repository.PokemonRepository;
-import java.util.List;
-import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -20,7 +10,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
+import java.util.Optional;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class PokemonSyncServiceTest {

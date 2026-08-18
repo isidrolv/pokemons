@@ -1,7 +1,8 @@
 package com.pokemon.bff.config;
 
-import java.util.Set;
 import org.springframework.boot.sql.init.dependency.AbstractBeansOfTypeDatabaseInitializerDetector;
+
+import java.util.Set;
 
 /**
  * Registers FlywayMigrationRunner as a database initializer so that JPA's

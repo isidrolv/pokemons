@@ -1,7 +1,7 @@
 package com.pokemon.bff.client;
 
-import com.pokemon.bff.client.dto.PokemonDetailsResponse;
 import com.pokemon.bff.client.dto.EvolutionChainResponse;
+import com.pokemon.bff.client.dto.PokemonDetailsResponse;
 import com.pokemon.bff.client.dto.PokemonListResponse;
 import com.pokemon.bff.client.dto.PokemonSpeciesResponse;
 import org.springframework.cloud.openfeign.FeignClient;

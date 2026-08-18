@@ -1,14 +1,13 @@
 package com.pokemon.bff;
 
-import com.pokemon.bff.PokemonApiBffApplication;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PokemonApiBffApplicationTest {
 
     @Test
-    void main() {
+    void testMain() {
 
         try {
             PokemonApiBffApplication.main(new String[]{});

@@ -1,7 +1,6 @@
 package com.pokemon.bff.client.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Getter;
 
 import java.util.List;
 
