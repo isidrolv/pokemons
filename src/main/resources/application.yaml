@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: pokemon-api-bff
+  datasource:
+    url: jdbc:mysql://localhost:3306/pokemon?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    username: escolar
+    password: leos
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    open-in-view: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+pokeapi:
+  url: https://pokeapi.co/api/v2
