@@ -36,10 +36,6 @@ class PokemonControllerTest {
     @Test
     void shouldReturnBadRequestWhenPokemonIsBlank() {
         // Given a blank Pokemon name or ID
-//        when(service.findByNameOrId(BLANK_POKEMON_IDENTIFIER)).then(invocation -> {
-//            throw new IllegalArgumentException("Pokemon identifier cannot be blank");
-//        });
-
         // when the controller is called with a blank Pokemon name or ID
         var response = controller.findByNameOrId(BLANK_POKEMON_IDENTIFIER);
 
