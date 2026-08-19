@@ -3,6 +3,7 @@ package com.pokemon.bff.service;
 import com.pokemon.bff.client.PokemonClient;
 import com.pokemon.bff.client.dto.EvolutionChainResponse;
 import com.pokemon.bff.client.dto.PokemonSpeciesResponse;
+import com.pokemon.bff.config.PokemonCacheNames;
 import com.pokemon.bff.dto.*;
 import com.pokemon.bff.persistence.entity.PokemonEntity;
 import com.pokemon.bff.persistence.entity.PokemonMetadataEntity;
@@ -10,6 +11,7 @@ import com.pokemon.bff.persistence.entity.PokemonSkillEntity;
 import com.pokemon.bff.persistence.entity.PokemonStatEntity;
 import com.pokemon.bff.persistence.repository.PokemonRepository;
 import com.pokemon.bff.sync.PokemonSyncService;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +33,8 @@ public class PokemonService {
         this.pokemonRepository = pokemonRepository;
     }
 
+    @Cacheable(cacheNames = PokemonCacheNames.POKEMON_PAGE,
+            key = "T(com.pokemon.bff.service.PokemonCacheKeys).page(#page, #size)", sync = true)
     public PokemonPage findPage(int page, int size) {
         var list = client.findAll(page * size, size);
         var items = list.results().stream().map(reference -> map(reference.name())).toList();
@@ -141,8 +145,10 @@ public class PokemonService {
         pokemonRepository.delete(entity);
     }
 
+    @Cacheable(cacheNames = PokemonCacheNames.POKEMON_DETAIL,
+            key = "T(com.pokemon.bff.service.PokemonCacheKeys).pokemon(#pokemon)", sync = true)
     public PokemonDetail findByNameOrId(String pokemon) {
-        String normalized = pokemon == null ? "" : pokemon.trim().toLowerCase();
+        String normalized = PokemonCacheKeys.pokemon(pokemon);
         if (normalized.isBlank()) {
             throw new IllegalArgumentException("Pokemon identifier must not be blank");
         }
