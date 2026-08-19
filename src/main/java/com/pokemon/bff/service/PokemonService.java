@@ -11,7 +11,9 @@ import com.pokemon.bff.persistence.entity.PokemonSkillEntity;
 import com.pokemon.bff.persistence.entity.PokemonStatEntity;
 import com.pokemon.bff.persistence.repository.PokemonRepository;
 import com.pokemon.bff.sync.PokemonSyncService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,11 +28,18 @@ public class PokemonService {
     private final PokemonClient client;
     private final PokemonSyncService syncService;
     private final PokemonRepository pokemonRepository;
+    private PokemonService self;
 
     public PokemonService(PokemonClient client, PokemonSyncService syncService, PokemonRepository pokemonRepository) {
         this.client = client;
         this.syncService = syncService;
         this.pokemonRepository = pokemonRepository;
+        this.self = this;
+    }
+
+    @Autowired
+    public void setSelf(@Lazy PokemonService self) {
+        this.self = self;
     }
 
     @Cacheable(cacheNames = PokemonCacheNames.POKEMON_PAGE,
@@ -145,16 +154,21 @@ public class PokemonService {
         pokemonRepository.delete(entity);
     }
 
-    @Cacheable(cacheNames = PokemonCacheNames.POKEMON_DETAIL,
-            key = "T(com.pokemon.bff.service.PokemonCacheKeys).pokemon(#pokemon)", sync = true)
     public PokemonDetail findByNameOrId(String pokemon) {
         String normalized = PokemonCacheKeys.pokemon(pokemon);
         if (normalized.isBlank()) {
             throw new IllegalArgumentException("Pokemon identifier must not be blank");
         }
+        var detail = self.fetchDetailFromApi(normalized);
+        syncService.syncDetail(detail);
+        return detail;
+    }
 
-        var details = client.findByNameOrId(normalized);
-        var species = client.findSpeciesByNameOrId(normalized);
+    @Cacheable(cacheNames = PokemonCacheNames.POKEMON_DETAIL,
+            key = "T(com.pokemon.bff.service.PokemonCacheKeys).pokemon(#pokemon)", sync = true)
+    public PokemonDetail fetchDetailFromApi(String pokemon) {
+        var details = client.findByNameOrId(pokemon);
+        var species = client.findSpeciesByNameOrId(pokemon);
         var evolution = client.findEvolutionChainById(extractEvolutionChainId(species));
 
         var image = details.sprites() == null ? null : details.sprites().frontDefault();
@@ -167,10 +181,8 @@ public class PokemonService {
                 ? new EvolutionNode(details.name(), List.of())
                 : mapEvolutionChain(evolution.chain());
 
-        var detail = new PokemonDetail(details.id(), details.name(), image, details.height() / 10.0,
+        return new PokemonDetail(details.id(), details.name(), image, details.height() / 10.0,
                 details.weight() / 10.0, coreStats, description, lineage);
-        syncService.syncDetail(detail);
-        return detail;
     }
 
     private PokemonItem map(String name) {
