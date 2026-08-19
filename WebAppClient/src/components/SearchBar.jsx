@@ -12,6 +12,7 @@ export default function SearchBar({ value, onChange, onSubmit }) {
         type="text"
         className="search-bar__input"
         placeholder="Buscar pokemon por nombre o id..."
+        aria-label="Buscar pokemon por nombre o id"
         value={value}
         onChange={(event) => onChange(event.target.value)}
         autoFocus

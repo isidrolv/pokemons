@@ -14,12 +14,4 @@ public record PokemonUpdateRequest(
         String region,
         String classificationTag
 ) {
-    public PokemonUpdateRequest {
-        if (stats == null) {
-            stats = List.of();
-        }
-        if (skills == null) {
-            skills = List.of();
-        }
-    }
 }

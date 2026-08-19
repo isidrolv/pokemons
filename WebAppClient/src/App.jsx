@@ -41,7 +41,7 @@ function App() {
     }
   }, [page, size, searchTerm, loadPage])
 
-  // Filtrado incremental: a partir de 3 caracteres, filtra sobre lo que ya
+  // Filtrado incremental: a partir de 1 caracter, filtra sobre lo que ya
   // está en memoria (la página actual); si aún no hay nada cargado, lo pide al API primero.
   useEffect(() => {
     if (searchTerm !== null) return
