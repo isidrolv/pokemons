@@ -2,9 +2,9 @@ spring:
   application:
     name: pokemon-api-bff
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3306/pokemon?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
-    username: ${DB_USERNAME:}
-    password: ${DB_PASSWORD:}
+    url: ${DB_URL:jdbc:mysql://localhost:3306/pokemon?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${DB_USERNAME:escolar}
+    password: ${DB_PASSWORD:leos}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:

@@ -4,25 +4,135 @@ import com.pokemon.bff.client.PokemonClient;
 import com.pokemon.bff.client.dto.EvolutionChainResponse;
 import com.pokemon.bff.client.dto.PokemonSpeciesResponse;
 import com.pokemon.bff.dto.*;
+import com.pokemon.bff.persistence.entity.PokemonEntity;
+import com.pokemon.bff.persistence.entity.PokemonMetadataEntity;
+import com.pokemon.bff.persistence.entity.PokemonSkillEntity;
+import com.pokemon.bff.persistence.entity.PokemonStatEntity;
+import com.pokemon.bff.persistence.repository.PokemonRepository;
 import com.pokemon.bff.sync.PokemonSyncService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.NoSuchElementException;
 
 @Service
 public class PokemonService {
     private final PokemonClient client;
     private final PokemonSyncService syncService;
+    private final PokemonRepository pokemonRepository;
 
-    public PokemonService(PokemonClient client, PokemonSyncService syncService) {
+    public PokemonService(PokemonClient client, PokemonSyncService syncService, PokemonRepository pokemonRepository) {
         this.client = client;
         this.syncService = syncService;
+        this.pokemonRepository = pokemonRepository;
     }
 
     public PokemonPage findPage(int page, int size) {
         var list = client.findAll(page * size, size);
         var items = list.results().stream().map(reference -> map(reference.name())).toList();
         return new PokemonPage(items, page, size, list.count(), (list.count() + size - 1) / size);
+    }
+
+    @Transactional
+    public PokemonEntity createPokemon(PokemonCreateRequest request) {
+        validateCreateRequest(request);
+
+        if (pokemonRepository.existsById(request.id())) {
+            throw new IllegalArgumentException("Pokemon with id " + request.id() + " already exists");
+        }
+        if (pokemonRepository.findByName(normalizeName(request.name())).isPresent()) {
+            throw new IllegalArgumentException("Pokemon with name " + request.name() + " already exists");
+        }
+
+        PokemonEntity entity = new PokemonEntity(request.id(), normalizeName(request.name()), request.imageUrl(),
+                request.height(), request.weight(), request.description(), Instant.now());
+        entity.setStats(new ArrayList<>());
+        entity.setSkills(new ArrayList<>());
+
+        request.stats().forEach(stat -> entity.getStats().add(new PokemonStatEntity(entity, normalizeName(stat.name()), stat.value())));
+        request.skills().forEach(skill -> entity.getSkills().add(new PokemonSkillEntity(entity, normalizeName(skill.name()), skill.url())));
+
+        if (hasMetadata(request)) {
+            PokemonMetadataEntity metadata = new PokemonMetadataEntity();
+            metadata.setPokemon(entity);
+            metadata.setLocalizedName(request.localizedName());
+            metadata.setRegion(request.region());
+            metadata.setClassificationTag(request.classificationTag());
+            entity.setMetadata(metadata);
+        }
+
+        return pokemonRepository.save(entity);
+    }
+
+    @Transactional
+    public PokemonEntity updatePokemon(Integer id, PokemonUpdateRequest request) {
+        validateUpdateRequest(id, request);
+
+        PokemonEntity entity = pokemonRepository.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Pokemon not found with id " + id));
+
+        if (request.name() != null && !request.name().isBlank()) {
+            String normalized = normalizeName(request.name());
+            if (!normalized.equalsIgnoreCase(entity.getName()) && pokemonRepository.findByName(normalized).isPresent()) {
+                throw new IllegalArgumentException("Pokemon with name " + request.name() + " already exists");
+            }
+            entity.setName(normalized);
+        }
+
+        if (request.imageUrl() != null) {
+            entity.setImageUrl(request.imageUrl());
+        }
+        if (request.height() != null) {
+            entity.setHeight(request.height());
+        }
+        if (request.weight() != null) {
+            entity.setWeight(request.weight());
+        }
+        if (request.description() != null) {
+            entity.setDescription(request.description());
+        }
+        if (request.stats() != null) {
+            entity.getStats().clear();
+            request.stats().forEach(stat -> entity.getStats().add(new PokemonStatEntity(entity, normalizeName(stat.name()), stat.value())));
+        }
+        if (request.skills() != null) {
+            entity.getSkills().clear();
+            request.skills().forEach(skill -> entity.getSkills().add(new PokemonSkillEntity(entity, normalizeName(skill.name()), skill.url())));
+        }
+
+        if (request.localizedName() != null || request.region() != null || request.classificationTag() != null) {
+            if (entity.getMetadata() == null) {
+                PokemonMetadataEntity metadata = new PokemonMetadataEntity();
+                metadata.setPokemon(entity);
+                entity.setMetadata(metadata);
+            }
+            if (request.localizedName() != null) {
+                entity.getMetadata().setLocalizedName(request.localizedName());
+            }
+            if (request.region() != null) {
+                entity.getMetadata().setRegion(request.region());
+            }
+            if (request.classificationTag() != null) {
+                entity.getMetadata().setClassificationTag(request.classificationTag());
+            }
+        }
+
+        entity.setSyncedAt(Instant.now());
+        return pokemonRepository.save(entity);
+    }
+
+    @Transactional
+    public void deletePokemon(Integer id) {
+        if (id == null || id <= 0) {
+            throw new IllegalArgumentException("Pokemon id must be positive");
+        }
+        PokemonEntity entity = pokemonRepository.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Pokemon not found with id " + id));
+        pokemonRepository.delete(entity);
     }
 
     public PokemonDetail findByNameOrId(String pokemon) {
@@ -101,6 +211,67 @@ public class PokemonService {
                 .map(this::mapEvolutionChain)
                 .toList();
         return new EvolutionNode(name, evolvesTo);
+    }
+
+    private void validateCreateRequest(PokemonCreateRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("Pokemon payload must not be null");
+        }
+        if (request.id() == null || request.id() <= 0) {
+            throw new IllegalArgumentException("Pokemon id must be positive");
+        }
+        if (request.name() == null || request.name().isBlank()) {
+            throw new IllegalArgumentException("Pokemon name must not be blank");
+        }
+        request.stats().forEach(stat -> {
+            if (stat == null || stat.name() == null || stat.name().isBlank()) {
+                throw new IllegalArgumentException("Pokemon stat names must not be blank");
+            }
+        });
+        request.skills().forEach(skill -> {
+            if (skill == null || skill.name() == null || skill.name().isBlank()) {
+                throw new IllegalArgumentException("Pokemon skill names must not be blank");
+            }
+        });
+    }
+
+    private void validateUpdateRequest(Integer id, PokemonUpdateRequest request) {
+        if (id == null || id <= 0) {
+            throw new IllegalArgumentException("Pokemon id must be positive");
+        }
+        if (request == null) {
+            throw new IllegalArgumentException("Pokemon payload must not be null");
+        }
+        if (request.name() != null && request.name().isBlank()) {
+            throw new IllegalArgumentException("Pokemon name must not be blank");
+        }
+        if (request.name() == null && request.imageUrl() == null && request.height() == null
+                && request.weight() == null && request.description() == null && request.stats().isEmpty()
+                && request.skills().isEmpty() && request.localizedName() == null
+                && request.region() == null && request.classificationTag() == null) {
+            throw new IllegalArgumentException("At least one field must be provided");
+        }
+        request.stats().forEach(stat -> {
+            if (stat == null || stat.name() == null || stat.name().isBlank()) {
+                throw new IllegalArgumentException("Pokemon stat names must not be blank");
+            }
+        });
+        request.skills().forEach(skill -> {
+            if (skill == null || skill.name() == null || skill.name().isBlank()) {
+                throw new IllegalArgumentException("Pokemon skill names must not be blank");
+            }
+        });
+    }
+
+    private boolean hasMetadata(PokemonCreateRequest request) {
+        return request.localizedName() != null || request.region() != null || request.classificationTag() != null;
+    }
+
+    private String normalizeName(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.trim().toLowerCase(Locale.ROOT);
     }
 
     private int extractEvolutionChainId(PokemonSpeciesResponse species) {

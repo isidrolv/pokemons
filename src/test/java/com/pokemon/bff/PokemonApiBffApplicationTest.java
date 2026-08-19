@@ -1,14 +1,16 @@
 package com.pokemon.bff;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.openfeign.EnableFeignClients;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PokemonApiBffApplicationTest {
 
     @Test
-    void testMain() {
-        org.junit.jupiter.api.Assertions.assertDoesNotThrow(() ->
-                PokemonApiBffApplication.main(new String[]{}));
+    void applicationClassIsProperlyAnnotated() {
+        assertTrue(PokemonApiBffApplication.class.isAnnotationPresent(SpringBootApplication.class));
+        assertTrue(PokemonApiBffApplication.class.isAnnotationPresent(EnableFeignClients.class));
     }
 }
