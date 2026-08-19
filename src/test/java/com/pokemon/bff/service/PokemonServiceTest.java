@@ -4,6 +4,7 @@ import com.pokemon.bff.client.PokemonClient;
 import com.pokemon.bff.client.dto.*;
 import com.pokemon.bff.dto.*;
 import com.pokemon.bff.persistence.entity.PokemonEntity;
+import com.pokemon.bff.persistence.entity.PokemonMetadataEntity;
 import com.pokemon.bff.persistence.repository.PokemonRepository;
 import com.pokemon.bff.sync.PokemonSyncService;
 import net.datafaker.Faker;
@@ -399,5 +400,95 @@ class PokemonServiceTest {
         assertNull(detail.description());
         assertEquals("snorlax", detail.evolutionLineage().name());
         assertEquals(0, detail.evolutionLineage().evolvesTo().size());
+    }
+
+    @Test
+    void shouldUpdateExistingPokemonWithLocalMetadata() {
+        var entity = new PokemonEntity(25, "pikachu", "old.png", 0.4, 6.0, "old description", Instant.now());
+        entity.setMetadata(new PokemonMetadataEntity());
+        entity.getMetadata().setPokemon(entity);
+        when(pokemonRepository.findById(25)).thenReturn(Optional.of(entity));
+        when(pokemonRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var updated = service.updatePokemon(25, new PokemonUpdateRequest(
+                "pikachu",
+                "updated description",
+                "new.png",
+                "Pikachu",
+                "Kanto",
+                "ELECTRIC"));
+
+        assertEquals("updated description", updated.getDescription());
+        assertEquals("new.png", updated.getImageUrl());
+        assertEquals("Pikachu", entity.getMetadata().getLocalizedName());
+        assertEquals("Kanto", entity.getMetadata().getRegion());
+        assertEquals("ELECTRIC", entity.getMetadata().getClassificationTag());
+        verify(pokemonRepository).save(entity);
+    }
+
+    @Test
+    void shouldRejectMissingPokemonAndEmptyPayload() {
+        when(pokemonRepository.findById(999)).thenReturn(Optional.empty());
+
+        assertThrows(IllegalArgumentException.class,
+                () -> service.updatePokemon(10, new PokemonUpdateRequest("   ", "   ", null, null, null, null)));
+        assertThrows(java.util.NoSuchElementException.class,
+                () -> service.updatePokemon(999, new PokemonUpdateRequest("pikachu", "updated", null, null, null, null)));
+    }
+
+    @Test
+    void shouldCreateLocalPokemon() {
+        when(pokemonRepository.existsById(2001)).thenReturn(false);
+        when(pokemonRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var created = service.createPokemon(new PokemonCreateRequest(
+                2001,
+                "TestMon",
+                "sprite.png",
+                1.2,
+                15.5,
+                List.of(new PokemonStat("speed", 99)),
+                "Local pokemon",
+                "Test Mon",
+                "Johto",
+                "CUSTOM"));
+
+        assertEquals(2001, created.getId());
+        assertEquals("testmon", created.getName());
+        assertEquals("sprite.png", created.getImageUrl());
+        assertEquals(1, created.getStats().size());
+        verify(pokemonRepository).save(any(PokemonEntity.class));
+    }
+
+    @Test
+    void shouldRejectInvalidCreateAndDeleteMissingPokemon() {
+        when(pokemonRepository.existsById(25)).thenReturn(true);
+        when(pokemonRepository.findById(404)).thenReturn(Optional.empty());
+
+        assertThrows(IllegalArgumentException.class,
+                () -> service.createPokemon(new PokemonCreateRequest(
+                        25,
+                        "pikachu",
+                        null,
+                        0.4,
+                        6.0,
+                        List.of(),
+                        null,
+                        null,
+                        null,
+                        null)));
+        assertThrows(IllegalArgumentException.class,
+                () -> service.createPokemon(new PokemonCreateRequest(
+                        2002,
+                        " ",
+                        null,
+                        0.4,
+                        6.0,
+                        List.of(),
+                        null,
+                        null,
+                        null,
+                        null)));
+        assertThrows(java.util.NoSuchElementException.class, () -> service.deletePokemon(404));
     }
 }
