@@ -1,4 +1,5 @@
 HELP.md
+.env
 # Compiled class file
 *.class
 target/
