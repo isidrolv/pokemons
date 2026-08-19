@@ -6,6 +6,12 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: ${REDIS_TIMEOUT:2s}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -16,6 +22,21 @@ logging:
   structured:
     format:
       console: ecs
+
+management:
+  health:
+    redis:
+      enabled: ${MANAGEMENT_HEALTH_REDIS_ENABLED:false}
+
+pokemon:
+  cache:
+    provider: ${POKEMON_CACHE_PROVIDER:caffeine}
+    page:
+      ttl: ${POKEMON_CACHE_PAGE_TTL:5m}
+      maximum-size: ${POKEMON_CACHE_PAGE_MAXIMUM_SIZE:128}
+    detail:
+      ttl: ${POKEMON_CACHE_DETAIL_TTL:15m}
+      maximum-size: ${POKEMON_CACHE_DETAIL_MAXIMUM_SIZE:512}
 
 pokeapi:
   url: https://pokeapi.co/api/v2

@@ -35,9 +35,11 @@ Browser
 │                                                    │
 │  PokemonController  →  PokemonService              │
 │                              │           │         │
-│                       PokemonClient  PokemonRepo   │
-│                    (OpenFeign)     (Spring Data)    │
+│                      Spring Cache  PokemonRepo     │
 │                              │           │         │
+│                       PokemonClient  (Spring Data) │
+│                         (OpenFeign)       │        │
+│                              │            ▼        │
 │                         PokéAPI      MySQL DB      │
 │                       (external)   + Flyway        │
 └────────────────────────────────────────────────────┘
@@ -57,6 +59,7 @@ The frontend is built as a static bundle that is copied into `src/main/resources
 | Persistence | Spring Data JPA + Hibernate |
 | Database | MySQL 8 |
 | Database migrations | Flyway (manually configured for Spring Boot 4.1) |
+| Caching | Spring Cache with configurable Caffeine / Redis / none |
 | API documentation | SpringDoc OpenAPI (Swagger UI) |
 | Code generation | Lombok |
 | Test data | DataFaker |
@@ -96,6 +99,9 @@ pokemons/
     │   │   │   ├── FlywayMigrationRunner.java
     │   │   │   ├── FlywayMigrationRunnerDetector.java
     │   │   │   ├── OpenApiConfig.java
+    │   │   │   ├── PokemonCacheConfiguration.java
+    │   │   │   ├── PokemonCacheNames.java
+    │   │   │   ├── PokemonCacheProperties.java
     │   │   │   └── WebConfig.java              # CORS / static-resource config
     │   │   ├── controller/
     │   │   │   └── PokemonController.java      # REST endpoints (/api/pokemons)
@@ -104,6 +110,7 @@ pokemons/
     │   │   │   ├── entity/                     # JPA entities (Pokemon, Stat, Skill, Metadata)
     │   │   │   └── repository/                 # Spring Data repositories
     │   │   ├── service/
+    │   │   │   ├── PokemonCacheKeys.java
     │   │   │   └── PokemonService.java         # Business logic, CRUD, PokeAPI aggregation
     │   │   └── sync/
     │   │       └── PokemonSyncService.java     # Writes PokeAPI data into local DB
@@ -159,6 +166,11 @@ Copy `.env.example` to `.env` and fill in the values before starting the applica
 DB_URL=jdbc:mysql://localhost:3306/pokemon?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
 DB_USERNAME=your_db_username
 DB_PASSWORD=your_db_password
+POKEMON_CACHE_PROVIDER=caffeine
+POKEMON_CACHE_PAGE_TTL=5m
+POKEMON_CACHE_PAGE_MAXIMUM_SIZE=128
+POKEMON_CACHE_DETAIL_TTL=15m
+POKEMON_CACHE_DETAIL_MAXIMUM_SIZE=512
 ```
 
 The `application.yaml` reads these via environment variable substitution:
@@ -173,6 +185,23 @@ spring:
 pokeapi:
   url: https://pokeapi.co/api/v2
 ```
+
+Available cache providers:
+
+- `caffeine` — default in-memory cache for local development
+- `redis` — shared cache backed by Redis
+- `none` — disables caching completely
+
+When Redis is enabled, the backend also reads:
+
+```dotenv
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=
+REDIS_TIMEOUT=2s
+```
+
+The BFF caches the expensive `GET /api/pokemons` and `GET /api/pokemons/{pokemon}` calls. Pokémon lookup keys are normalized, so `Pikachu`, `pikachu`, and ` pikachu ` reuse the same detail cache entry. Local `POST`, `PUT`, and `DELETE` operations do not evict these caches because the cached read endpoints source data from the upstream PokéAPI rather than the local database.
 
 ---
 
