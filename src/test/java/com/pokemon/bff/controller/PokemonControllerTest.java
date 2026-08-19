@@ -1,6 +1,7 @@
 package com.pokemon.bff.controller;
 
 import com.pokemon.bff.dto.*;
+import com.pokemon.bff.persistence.entity.PokemonEntity;
 import com.pokemon.bff.service.PokemonService;
 import net.datafaker.Faker;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,10 +40,6 @@ class PokemonControllerTest {
     @Test
     void shouldReturnBadRequestWhenPokemonIsBlank() {
         // Given a blank Pokemon name or ID
-//        when(service.findByNameOrId(BLANK_POKEMON_IDENTIFIER)).then(invocation -> {
-//            throw new IllegalArgumentException("Pokemon identifier cannot be blank");
-//        });
-
         // when the controller is called with a blank Pokemon name or ID
         var response = controller.findByNameOrId(BLANK_POKEMON_IDENTIFIER);
 
@@ -152,28 +149,28 @@ class PokemonControllerTest {
     @Test
     void shouldCreatePersistedPokemon() {
         var request = new PokemonCreateRequest(25, "pikachu", "new.png", 0.4, 6.0, List.of(), "Created locally", "Pikachu", "Kanto", "ELECTRIC");
-        var detail = new PokemonDetail(25, "pikachu", "new.png", 0.4, 6.0, List.of(), "Created locally", new EvolutionNode("pikachu", List.of()));
+        var entity = new PokemonEntity(25, "pikachu", "new.png", 0.4, 6.0, "Created locally", java.time.Instant.now());
 
-        when(service.createPokemon(any(PokemonCreateRequest.class))).thenReturn(detail);
+        when(service.createPokemon(any(PokemonCreateRequest.class))).thenReturn(entity);
 
         var response = controller.createPokemon(request);
 
         assertEquals(201, response.getStatusCode().value());
-        assertEquals("pikachu", response.getBody().name());
+        assertEquals("pikachu", response.getBody().getName());
     }
 
     @Test
     void shouldUpdatePersistedPokemon() {
         var request = new PokemonUpdateRequest("pikachu", "Updated description", "new.png", "Pikachu", "Kanto", "ELECTRIC");
-        var detail = new PokemonDetail(25, "pikachu", "new.png", 0.4, 6.0, List.of(), "Updated description", new EvolutionNode("pikachu", List.of()));
+        var entity = new PokemonEntity(25, "pikachu", "new.png", 0.4, 6.0, "Updated description", java.time.Instant.now());
 
-        when(service.updatePokemon(eq(25), any(PokemonUpdateRequest.class))).thenReturn(detail);
+        when(service.updatePokemon(eq(25), any(PokemonUpdateRequest.class))).thenReturn(entity);
 
         var response = controller.updatePokemon(25, request);
 
         assertEquals(200, response.getStatusCode().value());
-        assertEquals("new.png", response.getBody().image());
-        assertEquals("Updated description", response.getBody().description());
+        assertEquals("new.png", response.getBody().getImageUrl());
+        assertEquals("Updated description", response.getBody().getDescription());
     }
 
     @Test

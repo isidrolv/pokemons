@@ -2,11 +2,7 @@ package com.pokemon.bff.service;
 
 import com.pokemon.bff.client.PokemonClient;
 import com.pokemon.bff.client.dto.*;
-import com.pokemon.bff.dto.PokemonCreateRequest;
-import com.pokemon.bff.dto.PokemonDetail;
-import com.pokemon.bff.dto.PokemonItem;
-import com.pokemon.bff.dto.PokemonStat;
-import com.pokemon.bff.dto.PokemonUpdateRequest;
+import com.pokemon.bff.dto.*;
 import com.pokemon.bff.persistence.entity.PokemonEntity;
 import com.pokemon.bff.persistence.entity.PokemonMetadataEntity;
 import com.pokemon.bff.persistence.repository.PokemonRepository;
@@ -19,13 +15,14 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class PokemonServiceTest {
@@ -165,6 +162,185 @@ class PokemonServiceTest {
         assertThrows(IllegalArgumentException.class, () -> service.findByNameOrId(null));
     }
 
+    // --- createPokemon tests ---
+
+    @Test
+    void shouldCreatePokemonSuccessfully() {
+        PokemonCreateRequest request = new PokemonCreateRequest(
+                1, "Bulbasaur", "http://img.example.com/1.png", 0.7, 6.9, "A plant pokemon",
+                List.of(new PokemonStat("hp", 45)),
+                List.of(new Skill("overgrow", "http://api.example.com/ability/65/")),
+                "Fushigidane", "Kanto", "Seed Pokemon");
+
+        when(pokemonRepository.existsById(1)).thenReturn(false);
+        when(pokemonRepository.findByName("bulbasaur")).thenReturn(Optional.empty());
+        PokemonEntity saved = new PokemonEntity(1, "bulbasaur", "http://img.example.com/1.png",
+                0.7, 6.9, "A plant pokemon", Instant.now());
+        saved.setStats(new ArrayList<>());
+        saved.setSkills(new ArrayList<>());
+        when(pokemonRepository.save(any())).thenReturn(saved);
+
+        PokemonEntity result = service.createPokemon(request);
+
+        assertNotNull(result);
+        assertEquals(1, result.getId());
+        verify(pokemonRepository).save(any());
+    }
+
+    @Test
+    void shouldThrowWhenCreatingPokemonWithDuplicateId() {
+        PokemonCreateRequest request = new PokemonCreateRequest(
+                1, "Bulbasaur", null, null, null, null, null, null, null, null, null);
+        when(pokemonRepository.existsById(1)).thenReturn(true);
+
+        assertThrows(IllegalArgumentException.class, () -> service.createPokemon(request));
+        verify(pokemonRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldThrowWhenCreatingPokemonWithDuplicateName() {
+        PokemonCreateRequest request = new PokemonCreateRequest(
+                2, "Bulbasaur", null, null, null, null, null, null, null, null, null);
+        when(pokemonRepository.existsById(2)).thenReturn(false);
+        PokemonEntity existing = new PokemonEntity(1, "bulbasaur", null, null, null, null, Instant.now());
+        when(pokemonRepository.findByName("bulbasaur")).thenReturn(Optional.of(existing));
+
+        assertThrows(IllegalArgumentException.class, () -> service.createPokemon(request));
+        verify(pokemonRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldThrowWhenCreatingPokemonWithNullRequest() {
+        assertThrows(IllegalArgumentException.class, () -> service.createPokemon(null));
+    }
+
+    @Test
+    void shouldThrowWhenCreatingPokemonWithBlankName() {
+        PokemonCreateRequest request = new PokemonCreateRequest(
+                1, "  ", null, null, null, null, null, null, null, null, null);
+        assertThrows(IllegalArgumentException.class, () -> service.createPokemon(request));
+    }
+
+    @Test
+    void shouldCreatePokemonWithMetadataWhenProvided() {
+        PokemonCreateRequest request = new PokemonCreateRequest(
+                10, "Caterpie", null, null, null, null, null, null, "Caterpie", "Kanto", "Worm");
+        when(pokemonRepository.existsById(10)).thenReturn(false);
+        when(pokemonRepository.findByName("caterpie")).thenReturn(Optional.empty());
+        PokemonEntity saved = new PokemonEntity(10, "caterpie", null, null, null, null, Instant.now());
+        saved.setStats(new ArrayList<>());
+        saved.setSkills(new ArrayList<>());
+        when(pokemonRepository.save(any())).thenAnswer(inv -> {
+            PokemonEntity e = inv.getArgument(0);
+            assertNotNull(e.getMetadata());
+            assertEquals("Caterpie", e.getMetadata().getLocalizedName());
+            return e;
+        });
+
+        service.createPokemon(request);
+
+        verify(pokemonRepository).save(any());
+    }
+
+    // --- updatePokemon tests ---
+
+    @Test
+    void shouldUpdatePokemonNameSuccessfully() {
+        PokemonEntity existing = new PokemonEntity(1, "bulbasaur", null, null, null, null, Instant.now());
+        existing.setStats(new ArrayList<>());
+        existing.setSkills(new ArrayList<>());
+        when(pokemonRepository.findById(1)).thenReturn(Optional.of(existing));
+        when(pokemonRepository.findByName("ivysaur")).thenReturn(Optional.empty());
+        when(pokemonRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        PokemonUpdateRequest request = new PokemonUpdateRequest("Ivysaur", null, null, null, null, null, null, null, null, null);
+        PokemonEntity result = service.updatePokemon(1, request);
+
+        assertEquals("ivysaur", result.getName());
+    }
+
+    @Test
+    void shouldThrowWhenUpdatingPokemonWithDuplicateName() {
+        PokemonEntity existing = new PokemonEntity(1, "bulbasaur", null, null, null, null, Instant.now());
+        existing.setStats(new ArrayList<>());
+        existing.setSkills(new ArrayList<>());
+        PokemonEntity other = new PokemonEntity(2, "ivysaur", null, null, null, null, Instant.now());
+        when(pokemonRepository.findById(1)).thenReturn(Optional.of(existing));
+        when(pokemonRepository.findByName("ivysaur")).thenReturn(Optional.of(other));
+
+        PokemonUpdateRequest request = new PokemonUpdateRequest("Ivysaur", null, null, null, null, null, null, null, null, null);
+        assertThrows(IllegalArgumentException.class, () -> service.updatePokemon(1, request));
+    }
+
+    @Test
+    void shouldNotClearStatsWhenStatsIsNullInUpdateRequest() {
+        PokemonEntity existing = new PokemonEntity(1, "bulbasaur", null, null, null, null, Instant.now());
+        existing.setStats(new ArrayList<>(List.of()));
+        existing.getStats().add(new com.pokemon.bff.persistence.entity.PokemonStatEntity(existing, "hp", 45));
+        existing.setSkills(new ArrayList<>());
+        when(pokemonRepository.findById(1)).thenReturn(Optional.of(existing));
+        when(pokemonRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        PokemonUpdateRequest request = new PokemonUpdateRequest(null, "http://new.img/1.png", null, null, null, null, null, null, null, null);
+        PokemonEntity result = service.updatePokemon(1, request);
+
+        assertEquals(1, result.getStats().size(), "Stats should not be cleared when null in update request");
+        assertEquals("http://new.img/1.png", result.getImageUrl());
+    }
+
+    @Test
+    void shouldClearStatsWhenEmptyListProvidedInUpdateRequest() {
+        PokemonEntity existing = new PokemonEntity(1, "bulbasaur", null, null, null, null, Instant.now());
+        existing.setStats(new ArrayList<>());
+        existing.getStats().add(new com.pokemon.bff.persistence.entity.PokemonStatEntity(existing, "hp", 45));
+        existing.setSkills(new ArrayList<>());
+        when(pokemonRepository.findById(1)).thenReturn(Optional.of(existing));
+        when(pokemonRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        PokemonUpdateRequest request = new PokemonUpdateRequest(null, null, null, null, null, List.of(), null, null, null, null);
+        PokemonEntity result = service.updatePokemon(1, request);
+
+        assertEquals(0, result.getStats().size(), "Stats should be cleared when empty list provided");
+    }
+
+    @Test
+    void shouldThrowWhenUpdatingNonExistentPokemon() {
+        when(pokemonRepository.findById(999)).thenReturn(Optional.empty());
+        PokemonUpdateRequest request = new PokemonUpdateRequest("ghost", null, null, null, null, null, null, null, null, null);
+        assertThrows(NoSuchElementException.class, () -> service.updatePokemon(999, request));
+    }
+
+    @Test
+    void shouldThrowWhenUpdateRequestHasNoFields() {
+        PokemonUpdateRequest request = new PokemonUpdateRequest(null, null, null, null, null, null, null, null, null, null);
+        assertThrows(IllegalArgumentException.class, () -> service.updatePokemon(1, request));
+    }
+
+    // --- deletePokemon tests ---
+
+    @Test
+    void shouldDeletePokemonSuccessfully() {
+        PokemonEntity existing = new PokemonEntity(1, "bulbasaur", null, null, null, null, Instant.now());
+        when(pokemonRepository.findById(1)).thenReturn(Optional.of(existing));
+
+        service.deletePokemon(1);
+
+        verify(pokemonRepository).delete(existing);
+    }
+
+    @Test
+    void shouldThrowWhenDeletingNonExistentPokemon() {
+        when(pokemonRepository.findById(999)).thenReturn(Optional.empty());
+        assertThrows(NoSuchElementException.class, () -> service.deletePokemon(999));
+    }
+
+    @Test
+    void shouldThrowWhenDeletingWithInvalidId() {
+        assertThrows(IllegalArgumentException.class, () -> service.deletePokemon(null));
+        assertThrows(IllegalArgumentException.class, () -> service.deletePokemon(0));
+        assertThrows(IllegalArgumentException.class, () -> service.deletePokemon(-1));
+    }
+
     @Test
     void shouldReturnFallbackLineageWhenEvolutionChainIsNull() {
         when(client.findByNameOrId("eevee")).thenReturn(new PokemonDetailsResponse(
@@ -242,8 +418,8 @@ class PokemonServiceTest {
                 "Kanto",
                 "ELECTRIC"));
 
-        assertEquals("updated description", updated.description());
-        assertEquals("new.png", updated.image());
+        assertEquals("updated description", updated.getDescription());
+        assertEquals("new.png", updated.getImageUrl());
         assertEquals("Pikachu", entity.getMetadata().getLocalizedName());
         assertEquals("Kanto", entity.getMetadata().getRegion());
         assertEquals("ELECTRIC", entity.getMetadata().getClassificationTag());
@@ -263,7 +439,6 @@ class PokemonServiceTest {
     @Test
     void shouldCreateLocalPokemon() {
         when(pokemonRepository.existsById(2001)).thenReturn(false);
-        when(pokemonRepository.existsByNameIgnoreCase("testmon")).thenReturn(false);
         when(pokemonRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         var created = service.createPokemon(new PokemonCreateRequest(
@@ -278,10 +453,10 @@ class PokemonServiceTest {
                 "Johto",
                 "CUSTOM"));
 
-        assertEquals(2001, created.id());
-        assertEquals("testmon", created.name());
-        assertEquals("sprite.png", created.image());
-        assertEquals(1, created.coreStats().size());
+        assertEquals(2001, created.getId());
+        assertEquals("testmon", created.getName());
+        assertEquals("sprite.png", created.getImageUrl());
+        assertEquals(1, created.getStats().size());
         verify(pokemonRepository).save(any(PokemonEntity.class));
     }
 

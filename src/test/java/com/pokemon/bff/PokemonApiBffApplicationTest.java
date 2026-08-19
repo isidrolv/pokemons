@@ -1,20 +1,16 @@
 package com.pokemon.bff;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.openfeign.EnableFeignClients;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PokemonApiBffApplicationTest {
 
     @Test
-    void testMain() {
-
-        try {
-            PokemonApiBffApplication.main(new String[]{});
-            assertTrue(true);
-        } catch (Exception e) {
-            System.out.println("The main method should not throw an exception: " + e.getMessage());
-        }
-
+    void applicationClassIsProperlyAnnotated() {
+        assertTrue(PokemonApiBffApplication.class.isAnnotationPresent(SpringBootApplication.class));
+        assertTrue(PokemonApiBffApplication.class.isAnnotationPresent(EnableFeignClients.class));
     }
 }
