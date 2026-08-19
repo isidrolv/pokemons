@@ -182,7 +182,8 @@ class PokemonControllerTest {
         when(service.createPokemon(any(PokemonCreateRequest.class)))
                 .thenThrow(new IllegalArgumentException("bad request"));
 
-        var responseBad = controller.createPokemon(new PokemonCreateRequest(0, " ", null, null, null, null, null, null, null, null));
+        var responseBad = controller.createPokemon(new PokemonCreateRequest(
+                0, " ", null, null, null, null, List.of(), List.of(), null, null, null));
         assertEquals(400, responseBad.getStatusCode().value());
         assertEquals(400, controller.createPokemon(null).getStatusCode().value());
     }
@@ -303,8 +304,6 @@ class PokemonControllerTest {
 
     @Test
     void shouldReturn400WhenDeleteIdIsInvalid() {
-        doThrow(new IllegalArgumentException("id must be positive")).when(service).deletePokemon(-1);
-
         var response = controller.deletePokemon(-1);
 
         assertEquals(400, response.getStatusCode().value());
