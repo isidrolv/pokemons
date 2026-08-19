@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080/api/pokemons'
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/pokemons'
 
 function truncate(text, max) {
   if (!text) return null

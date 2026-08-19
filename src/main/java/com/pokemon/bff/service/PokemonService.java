@@ -246,21 +246,25 @@ public class PokemonService {
             throw new IllegalArgumentException("Pokemon name must not be blank");
         }
         if (request.name() == null && request.imageUrl() == null && request.height() == null
-                && request.weight() == null && request.description() == null && request.stats().isEmpty()
-                && request.skills().isEmpty() && request.localizedName() == null
+                && request.weight() == null && request.description() == null && request.stats() == null
+                && request.skills() == null && request.localizedName() == null
                 && request.region() == null && request.classificationTag() == null) {
             throw new IllegalArgumentException("At least one field must be provided");
         }
-        request.stats().forEach(stat -> {
-            if (stat == null || stat.name() == null || stat.name().isBlank()) {
-                throw new IllegalArgumentException("Pokemon stat names must not be blank");
-            }
-        });
-        request.skills().forEach(skill -> {
-            if (skill == null || skill.name() == null || skill.name().isBlank()) {
-                throw new IllegalArgumentException("Pokemon skill names must not be blank");
-            }
-        });
+        if (request.stats() != null) {
+            request.stats().forEach(stat -> {
+                if (stat == null || stat.name() == null || stat.name().isBlank()) {
+                    throw new IllegalArgumentException("Pokemon stat names must not be blank");
+                }
+            });
+        }
+        if (request.skills() != null) {
+            request.skills().forEach(skill -> {
+                if (skill == null || skill.name() == null || skill.name().isBlank()) {
+                    throw new IllegalArgumentException("Pokemon skill names must not be blank");
+                }
+            });
+        }
     }
 
     private boolean hasMetadata(PokemonCreateRequest request) {
