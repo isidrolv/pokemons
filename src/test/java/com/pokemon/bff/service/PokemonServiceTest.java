@@ -329,7 +329,7 @@ class PokemonServiceTest {
     @Test
     void shouldThrowWhenUpdateRequestHasNoFields() {
         var request = new PokemonUpdateRequest(null, null, null, null, null,
-                List.of(), List.of(), null, null, null);
+                null, null, null, null, null);
 
         assertThrows(IllegalArgumentException.class, () -> service.updatePokemon(1, request));
     }
