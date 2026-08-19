@@ -4,7 +4,7 @@ Backend-for-Frontend construido con Spring Boot, Spring Web, Spring Data JPA y O
 
 ## Requisitos
 
-- Java 21
+- Java 25
 - Maven Wrapper incluido (`mvnw.cmd`)
 - Node.js y npm, necesarios para construir el frontend
 - MySQL disponible para el perfil de ejecución configurado
