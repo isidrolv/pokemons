@@ -15,23 +15,11 @@ public record PokemonUpdateRequest(
         String classificationTag
 ) {
 
-    /**
-     * Convenience constructor for the local metadata update payload used by
-     * the controller tests and by clients that only update the basic fields.
-     */
-    public PokemonUpdateRequest(String name, String imageUrl, String description,
+    /** Convenience constructor for updates that only use the basic fields. */
+    public PokemonUpdateRequest(String name, String description, String imageUrl,
             String localizedName, String region, String classificationTag) {
         this(name, imageUrl, null, null, description, null, null,
                 localizedName, region, classificationTag);
-    }
-
-    /**
-     * @deprecated Prefer the overload that follows the record component order (imageUrl before description).
-     */
-    @Deprecated
-    public PokemonUpdateRequest(String name, String description, String imageUrl,
-            String localizedName, String region, String classificationTag) {
-        this(name, imageUrl, description, localizedName, region, classificationTag);
     }
 
     public boolean hasRequiredFields() {

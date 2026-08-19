@@ -13,6 +13,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
 
 import java.util.List;
+import java.util.NoSuchElementException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -20,6 +21,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class PokemonControllerTest {
@@ -178,7 +182,8 @@ class PokemonControllerTest {
         when(service.createPokemon(any(PokemonCreateRequest.class)))
                 .thenThrow(new IllegalArgumentException("bad request"));
 
-        var responseBad = controller.createPokemon(new PokemonCreateRequest(0, " ", null, null, null, null, null, null, null, null));
+        var responseBad = controller.createPokemon(new PokemonCreateRequest(
+                0, " ", null, null, null, null, List.of(), List.of(), null, null, null));
         assertEquals(400, responseBad.getStatusCode().value());
         assertEquals(400, controller.createPokemon(null).getStatusCode().value());
     }
@@ -210,6 +215,98 @@ class PokemonControllerTest {
 
         assertEquals(400, controller.deletePokemon(0).getStatusCode().value());
         assertEquals(404, controller.deletePokemon(999).getStatusCode().value());
+    }
+    // --- createPokemon ---
+
+    @Test
+    void shouldReturn201WhenCreateRequestIsValid() {
+        var request = new PokemonCreateRequest(1, "bulbasaur", "img.png", 0.7, 6.9,
+                "A strange seed.", List.of(), List.of(), null, null, null);
+        PokemonEntity saved = new PokemonEntity(1, "bulbasaur", "img.png", 0.7, 6.9, "A strange seed.", java.time.Instant.now());
+        when(service.createPokemon(request)).thenReturn(saved);
+
+        var response = controller.createPokemon(request);
+
+        assertEquals(201, response.getStatusCode().value());
+        assertEquals(saved, response.getBody());
+    }
+
+    @Test
+    void shouldReturn400WhenCreateThrowsIllegalArgument() {
+        var request = new PokemonCreateRequest(null, "", null, null, null, null, List.of(), List.of(), null, null, null);
+        when(service.createPokemon(request)).thenThrow(new IllegalArgumentException("Pokemon id must be positive"));
+
+        var response = controller.createPokemon(request);
+
+        assertEquals(400, response.getStatusCode().value());
+        assertNull(response.getBody());
+    }
+
+    // --- updatePokemon ---
+
+    @Test
+    void shouldReturn200WhenUpdateIsValid() {
+        var request = new PokemonUpdateRequest("bulbasaur-updated", null, null, null, null,
+                List.of(), List.of(), null, null, null);
+        PokemonEntity updated = new PokemonEntity(1, "bulbasaur-updated", "img.png", 0.7, 6.9, "desc", java.time.Instant.now());
+        when(service.updatePokemon(1, request)).thenReturn(updated);
+
+        var response = controller.updatePokemon(1, request);
+
+        assertEquals(200, response.getStatusCode().value());
+        assertEquals(updated, response.getBody());
+    }
+
+    @Test
+    void shouldReturn404WhenPokemonNotFoundForUpdate() {
+        var request = new PokemonUpdateRequest("ghost", null, null, null, null,
+                List.of(), List.of(), null, null, null);
+        when(service.updatePokemon(eq(999), any())).thenThrow(new NoSuchElementException("Not found"));
+
+        var response = controller.updatePokemon(999, request);
+
+        assertEquals(404, response.getStatusCode().value());
+        assertNull(response.getBody());
+    }
+
+    @Test
+    void shouldReturn400WhenUpdateThrowsIllegalArgument() {
+        var request = new PokemonUpdateRequest("  ", null, null, null, null,
+                List.of(), List.of(), null, null, null);
+        when(service.updatePokemon(eq(1), any())).thenThrow(new IllegalArgumentException("name must not be blank"));
+
+        var response = controller.updatePokemon(1, request);
+
+        assertEquals(400, response.getStatusCode().value());
+        assertNull(response.getBody());
+    }
+
+    // --- deletePokemon ---
+
+    @Test
+    void shouldReturn204WhenDeleteIsSuccessful() {
+        doNothing().when(service).deletePokemon(1);
+
+        var response = controller.deletePokemon(1);
+
+        assertEquals(204, response.getStatusCode().value());
+        verify(service).deletePokemon(1);
+    }
+
+    @Test
+    void shouldReturn404WhenPokemonNotFoundForDelete() {
+        doThrow(new NoSuchElementException("Not found")).when(service).deletePokemon(999);
+
+        var response = controller.deletePokemon(999);
+
+        assertEquals(404, response.getStatusCode().value());
+    }
+
+    @Test
+    void shouldReturn400WhenDeleteIdIsInvalid() {
+        var response = controller.deletePokemon(-1);
+
+        assertEquals(400, response.getStatusCode().value());
     }
 
     public static class PokemonFactory {
