@@ -19,6 +19,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -146,6 +150,71 @@ class PokemonControllerTest {
         assertEquals(400, nullResponse.getStatusCode().value());
     }
 
+    @Test
+    void shouldCreatePersistedPokemon() {
+        var request = new PokemonCreateRequest(25, "pikachu", "new.png", 0.4, 6.0, List.of(), "Created locally", "Pikachu", "Kanto", "ELECTRIC");
+        var entity = new PokemonEntity(25, "pikachu", "new.png", 0.4, 6.0, "Created locally", java.time.Instant.now());
+
+        when(service.createPokemon(any(PokemonCreateRequest.class))).thenReturn(entity);
+
+        var response = controller.createPokemon(request);
+
+        assertEquals(201, response.getStatusCode().value());
+        assertEquals("pikachu", response.getBody().getName());
+    }
+
+    @Test
+    void shouldUpdatePersistedPokemon() {
+        var request = new PokemonUpdateRequest("pikachu", "Updated description", "new.png", "Pikachu", "Kanto", "ELECTRIC");
+        var entity = new PokemonEntity(25, "pikachu", "new.png", 0.4, 6.0, "Updated description", java.time.Instant.now());
+
+        when(service.updatePokemon(eq(25), any(PokemonUpdateRequest.class))).thenReturn(entity);
+
+        var response = controller.updatePokemon(25, request);
+
+        assertEquals(200, response.getStatusCode().value());
+        assertEquals("new.png", response.getBody().getImageUrl());
+        assertEquals("Updated description", response.getBody().getDescription());
+    }
+
+    @Test
+    void shouldRejectMalformedPokemonCreates() {
+        when(service.createPokemon(any(PokemonCreateRequest.class)))
+                .thenThrow(new IllegalArgumentException("bad request"));
+
+        var responseBad = controller.createPokemon(new PokemonCreateRequest(0, " ", null, null, null, null, null, null, null, null));
+        assertEquals(400, responseBad.getStatusCode().value());
+        assertEquals(400, controller.createPokemon(null).getStatusCode().value());
+    }
+
+    @Test
+    void shouldRejectMalformedOrMissingPokemonUpdates() {
+        when(service.updatePokemon(eq(25), any(PokemonUpdateRequest.class)))
+                .thenThrow(new IllegalArgumentException("bad request"));
+        when(service.updatePokemon(eq(999), any(PokemonUpdateRequest.class)))
+                .thenThrow(new java.util.NoSuchElementException("not found"));
+
+        var malformed = new PokemonUpdateRequest("   ", "   ", null, null, null, null);
+        var responseBad = controller.updatePokemon(25, malformed);
+        assertEquals(400, responseBad.getStatusCode().value());
+
+        var responseNotFound = controller.updatePokemon(999, new PokemonUpdateRequest("pikachu", "Updated", "new.png", null, null, null));
+        assertEquals(404, responseNotFound.getStatusCode().value());
+    }
+
+    @Test
+    void shouldDeletePersistedPokemon() {
+        var response = controller.deletePokemon(25);
+        assertEquals(204, response.getStatusCode().value());
+    }
+
+    @Test
+    void shouldRejectOr404DeleteRequests() {
+        doThrow(new java.util.NoSuchElementException("not found")).when(service).deletePokemon(999);
+
+        assertEquals(400, controller.deletePokemon(0).getStatusCode().value());
+        assertEquals(404, controller.deletePokemon(999).getStatusCode().value());
+    }
     // --- createPokemon ---
 
     @Test

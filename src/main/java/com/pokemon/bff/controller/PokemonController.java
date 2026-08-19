@@ -52,7 +52,10 @@ public class PokemonController {
             @ApiResponse(responseCode = "400", description = "Malformed request payload, invalid values, or duplicate local identifier", content = @Content)
     })
     @PostMapping
-    public ResponseEntity<PokemonEntity> createPokemon(@RequestBody PokemonCreateRequest request) {
+    public ResponseEntity<PokemonEntity> createPokemon(@RequestBody(required = false) PokemonCreateRequest request) {
+        if (request == null) {
+            return ResponseEntity.badRequest().build();
+        }
         try {
             return ResponseEntity.status(HttpStatus.CREATED).body(service.createPokemon(request));
         } catch (IllegalArgumentException e) {
@@ -67,7 +70,11 @@ public class PokemonController {
             @ApiResponse(responseCode = "404", description = "Pokemon not found in the local store", content = @Content)
     })
     @PutMapping("/{id}")
-    public ResponseEntity<PokemonEntity> updatePokemon(@PathVariable Integer id, @RequestBody PokemonUpdateRequest request) {
+    public ResponseEntity<PokemonEntity> updatePokemon(@PathVariable Integer id,
+            @RequestBody(required = false) PokemonUpdateRequest request) {
+        if (id == null || id <= 0 || request == null) {
+            return ResponseEntity.badRequest().build();
+        }
         try {
             return ResponseEntity.ok(service.updatePokemon(id, request));
         } catch (NoSuchElementException e) {
@@ -85,6 +92,9 @@ public class PokemonController {
     })
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletePokemon(@PathVariable Integer id) {
+        if (id == null || id <= 0) {
+            return ResponseEntity.badRequest().build();
+        }
         try {
             service.deletePokemon(id);
             return ResponseEntity.noContent().build();

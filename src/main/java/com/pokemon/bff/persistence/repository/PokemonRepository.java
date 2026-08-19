@@ -10,4 +10,5 @@ public interface PokemonRepository extends JpaRepository<PokemonEntity, Integer>
     Optional<PokemonEntity> findByName(String name);
 
     List<PokemonEntity> findByNameContainingIgnoreCase(String name);
+    boolean existsByNameIgnoreCase(String name);
 }

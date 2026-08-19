@@ -1,6 +1,7 @@
 # Pokemon API BFF
 
 Backend-for-Frontend construido con Spring Boot, Spring Web, Spring Data JPA y OpenFeign. El proyecto expone una API para consultar y administrar información de Pokémon, además de servir el frontend React generado por Vite.
+Backend-for-Frontend para consultar Pokémon mediante Spring Boot, Spring Web, Spring Data JPA y OpenFeign. La aplicación también puede servir el frontend React generado con Vite desde `src/main/resources/static`.
 
 ## Requisitos
 
@@ -28,6 +29,7 @@ src/main/resources/db/       # Migraciones Flyway
 ```
 
 ## Repositorios
+## Ejecutar el backend
 
 `PokemonRepository` extiende `JpaRepository<PokemonEntity, Integer>`, por lo que hereda operaciones CRUD, paginación y ordenamiento para `PokemonEntity`.
 
@@ -35,13 +37,18 @@ También declara:
 
 ```java
 Optional<PokemonEntity> findByName(String name);
+```powershell
+.\mvnw.cmd spring-boot:run
 ```
 
 Spring Data JPA genera automáticamente la consulta por el nombre del Pokémon.
+La API estará disponible en `http://localhost:8080`.
 
 ## Ejecutar en desarrollo
+## Frontend React
 
 Construir el frontend:
+El frontend se encuentra en `WebAppClient` y usa React con Vite:
 
 ```powershell
 cd WebAppClient
@@ -75,6 +82,7 @@ Ejecuta el JAR resultante con:
 ```powershell
 java -jar target\pokemon-api-bff-0.0.1-SNAPSHOT.jar
 ```
+El build debe generarse en `src/main/resources/static` mediante la configuración de Vite. Después puede ejecutarse Spring Boot para servir la aplicación completa desde el mismo origen.
 
 ## API principal
 
@@ -87,6 +95,9 @@ DELETE /api/pokemons/{id}
 ```
 
 La documentación OpenAPI, si la aplicación está ejecutándose, está disponible en:
+Las operaciones `POST`, `PUT` y `DELETE` trabajan sobre la base de datos local. La actualización devuelve `400` para identificadores o payloads inválidos y `404` cuando el Pokémon no existe localmente.
+
+La documentación OpenAPI está disponible en:
 
 ```text
 http://localhost:8080/swagger-ui/index.html
@@ -97,13 +108,38 @@ http://localhost:8080/swagger-ui/index.html
 Las migraciones se encuentran en `src/main/resources/db/migration`. Flyway las ejecuta al iniciar la aplicación cuando la configuración de base de datos está disponible.
 
 ## Pruebas
+Las migraciones Flyway están en `src/main/resources/db/migration`. La configuración por defecto usa MySQL:
 
 ```powershell
 .\mvnw.cmd test
+$env:DB_USERNAME = "root"
+$env:DB_PASSWORD = "tu-password"
+```
+
+También puede sobrescribirse la URL con `DB_URL`.
+
+## Pruebas y empaquetado
+
+```powershell
+.\mvnw.cmd clean verify
+java -jar target\pokemon-api-bff-0.0.1-SNAPSHOT.jar
 ```
 
 ## Notas
+## Estructura
 
 - Las llamadas del frontend deben usar rutas relativas, por ejemplo `fetch('/api/pokemons')`.
 - `PokemonRepository` debe utilizarse desde la capa de servicio, no directamente desde el controlador.
 - No se deben editar manualmente los archivos generados dentro de `src/main/resources/static/assets`; deben regenerarse con `npm run build`.
+```text
+src/main/java/com/pokemon/bff
+├── client/                  # Cliente Feign para PokeAPI
+├── controller/              # Endpoints HTTP
+├── dto/                     # DTOs de entrada y salida
+├── persistence/entity/      # Entidades JPA
+├── persistence/repository/  # Repositorios Spring Data
+├── service/                 # Lógica de negocio
+└── sync/                    # Sincronización con PokeAPI
+
+WebAppClient/                # Aplicación React + Vite
+```
