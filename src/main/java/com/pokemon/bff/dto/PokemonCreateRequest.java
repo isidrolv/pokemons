@@ -48,8 +48,10 @@ public record PokemonCreateRequest(
                 && name != null
                 && !name.isBlank()
                 && height != null
+                && Double.isFinite(height)
                 && height >= 0
                 && weight != null
+                && Double.isFinite(weight)
                 && weight >= 0;
     }
 }
