@@ -15,11 +15,22 @@ public record PokemonCreateRequest(
         String region,
         String classificationTag
 ) {
-    /** Backward-compatible constructor for payloads without skills. */
+    /** Backward-compatible constructor for payloads without skills (record-order parameters). */
+    public PokemonCreateRequest(Integer id, String name, String imageUrl, Double height,
+            Double weight, String description, List<PokemonStat> stats,
+            String localizedName, String region, String classificationTag) {
+        this(id, name, imageUrl, height, weight, description, stats, List.of(),
+                localizedName, region, classificationTag);
+    }
+
+    /**
+     * @deprecated Prefer the overload that follows the record component order (description before stats).
+     */
+    @Deprecated
     public PokemonCreateRequest(Integer id, String name, String imageUrl, Double height,
             Double weight, List<PokemonStat> stats, String description,
             String localizedName, String region, String classificationTag) {
-        this(id, name, imageUrl, height, weight, description, stats, List.of(),
+        this(id, name, imageUrl, height, weight, description, stats,
                 localizedName, region, classificationTag);
     }
 
