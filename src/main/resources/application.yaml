@@ -18,6 +18,11 @@ spring:
     show-sql: true
     open-in-view: false
 
+logging:
+  structured:
+    format:
+      console: ecs
+
 management:
   health:
     redis:
