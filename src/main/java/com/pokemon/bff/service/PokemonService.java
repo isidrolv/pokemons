@@ -96,10 +96,16 @@ public class PokemonService {
             entity.setDescription(request.description());
         }
         if (request.stats() != null) {
+            if (entity.getStats() == null) {
+                entity.setStats(new ArrayList<>());
+            }
             entity.getStats().clear();
             request.stats().forEach(stat -> entity.getStats().add(new PokemonStatEntity(entity, normalizeName(stat.name()), stat.value())));
         }
         if (request.skills() != null) {
+            if (entity.getSkills() == null) {
+                entity.setSkills(new ArrayList<>());
+            }
             entity.getSkills().clear();
             request.skills().forEach(skill -> entity.getSkills().add(new PokemonSkillEntity(entity, normalizeName(skill.name()), skill.url())));
         }
@@ -224,8 +230,9 @@ public class PokemonService {
             throw new IllegalArgumentException("Pokemon name must not be blank");
         }
         request.stats().forEach(stat -> {
-            if (stat == null || stat.name() == null || stat.name().isBlank()) {
-                throw new IllegalArgumentException("Pokemon stat names must not be blank");
+            if (stat == null || stat.name() == null || stat.name().isBlank()
+                    || stat.value() < 0) {
+                throw new IllegalArgumentException("Pokemon stats must have a non-blank name and non-negative value");
             }
         });
         request.skills().forEach(skill -> {
@@ -233,6 +240,8 @@ public class PokemonService {
                 throw new IllegalArgumentException("Pokemon skill names must not be blank");
             }
         });
+        validateNonNegative(request.height(), "height");
+        validateNonNegative(request.weight(), "weight");
     }
 
     private void validateUpdateRequest(Integer id, PokemonUpdateRequest request) {
@@ -253,8 +262,9 @@ public class PokemonService {
         }
         if (request.stats() != null) {
             request.stats().forEach(stat -> {
-                if (stat == null || stat.name() == null || stat.name().isBlank()) {
-                    throw new IllegalArgumentException("Pokemon stat names must not be blank");
+                if (stat == null || stat.name() == null || stat.name().isBlank()
+                        || stat.value() < 0) {
+                    throw new IllegalArgumentException("Pokemon stats must have a non-blank name and non-negative value");
                 }
             });
         }
@@ -264,6 +274,14 @@ public class PokemonService {
                     throw new IllegalArgumentException("Pokemon skill names must not be blank");
                 }
             });
+        }
+        validateNonNegative(request.height(), "height");
+        validateNonNegative(request.weight(), "weight");
+    }
+
+    private void validateNonNegative(Double value, String fieldName) {
+        if (value != null && (!Double.isFinite(value) || value < 0)) {
+            throw new IllegalArgumentException("Pokemon " + fieldName + " must be finite and non-negative");
         }
     }
 
