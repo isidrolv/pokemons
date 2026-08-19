@@ -30,6 +30,10 @@ public class PokemonService {
     private final PokemonRepository pokemonRepository;
     private PokemonService self;
 
+    @Lazy
+    @Autowired
+    private PokemonService self;
+
     public PokemonService(PokemonClient client, PokemonSyncService syncService, PokemonRepository pokemonRepository) {
         this.client = client;
         this.syncService = syncService;
@@ -42,11 +46,17 @@ public class PokemonService {
         this.self = self;
     }
 
+    public PokemonPage findPage(int page, int size) {
+        var result = self.assemblePage(page, size);
+        result.content().forEach(syncService::syncItem);
+        return result;
+    }
+
     @Cacheable(cacheNames = PokemonCacheNames.POKEMON_PAGE,
             key = "T(com.pokemon.bff.service.PokemonCacheKeys).page(#page, #size)", sync = true)
-    public PokemonPage findPage(int page, int size) {
+    public PokemonPage assemblePage(int page, int size) {
         var list = client.findAll(page * size, size);
-        var items = list.results().stream().map(reference -> map(reference.name())).toList();
+        var items = list.results().stream().map(reference -> mapItem(reference.name())).toList();
         return new PokemonPage(items, page, size, list.count(), (list.count() + size - 1) / size);
     }
 
@@ -185,18 +195,16 @@ public class PokemonService {
                 details.weight() / 10.0, coreStats, description, lineage);
     }
 
-    private PokemonItem map(String name) {
+    private PokemonItem mapItem(String name) {
         var details = client.findByNameOrId(name);
         var species = client.findSpeciesByNameOrId(name);
         String category = findEnglishCategory(species);
         var skills = details.abilities() == null ? List.<Skill>of() : details.abilities().stream()
                 .filter(a -> a != null && a.ability() != null)
                 .map(a -> new Skill(a.ability().name(), a.ability().url())).toList();
-        var item = new PokemonItem(details.id(), details.name(),
+        return new PokemonItem(details.id(), details.name(),
                 details.sprites() == null ? null : details.sprites().frontDefault(),
                 category, details.weight() / 10.0, skills);
-        syncService.syncItem(item);
-        return item;
     }
 
     private String findEnglishCategory(PokemonSpeciesResponse species) {

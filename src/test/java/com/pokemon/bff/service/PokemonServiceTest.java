@@ -12,11 +12,13 @@ import com.pokemon.bff.persistence.entity.PokemonMetadataEntity;
 import com.pokemon.bff.persistence.repository.PokemonRepository;
 import com.pokemon.bff.sync.PokemonSyncService;
 import net.datafaker.Faker;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Instant;
 import java.util.List;
@@ -44,6 +46,11 @@ class PokemonServiceTest {
 
     @InjectMocks
     private PokemonService service;
+
+    @BeforeEach
+    void setUp() {
+        ReflectionTestUtils.setField(service, "self", service);
+    }
 
     @Test
     void shouldReturnDetailedViewWithDescriptionStatsAndLineage() {

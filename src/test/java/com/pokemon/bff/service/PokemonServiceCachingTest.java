@@ -85,7 +85,7 @@ class PokemonServiceCachingTest {
             verify(client, times(1)).findAll(0, 1);
             verify(client, times(1)).findByNameOrId("bulbasaur");
             verify(client, times(1)).findSpeciesByNameOrId("bulbasaur");
-            verify(syncService, times(1)).syncItem(any());
+            verify(syncService, times(2)).syncItem(any());
         }
     }
 
