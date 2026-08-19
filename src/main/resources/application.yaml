@@ -18,6 +18,11 @@ spring:
     show-sql: true
     open-in-view: false
 
+management:
+  health:
+    redis:
+      enabled: ${MANAGEMENT_HEALTH_REDIS_ENABLED:false}
+
 pokemon:
   cache:
     provider: ${POKEMON_CACHE_PROVIDER:caffeine}
