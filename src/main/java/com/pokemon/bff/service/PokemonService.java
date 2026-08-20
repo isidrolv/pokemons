@@ -30,15 +30,10 @@ public class PokemonService {
     private final PokemonRepository pokemonRepository;
     private PokemonService self;
 
-    @Lazy
-    @Autowired
-    private PokemonService self;
-
     public PokemonService(PokemonClient client, PokemonSyncService syncService, PokemonRepository pokemonRepository) {
         this.client = client;
         this.syncService = syncService;
         this.pokemonRepository = pokemonRepository;
-        this.self = this;
     }
 
     @Autowired
