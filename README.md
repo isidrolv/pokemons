@@ -187,7 +187,7 @@ pokeapi:
   url: https://pokeapi.co/api/v2
 ```
 
-Actuator is configured to expose `health` and `info` over HTTP, and `health` always shows component-level details (for example `db` and `redis` when enabled).
+Actuator is configured to expose `health` and `info` over HTTP, and `health` always shows component-level status (for example `db` and `redis` when enabled) without exposing sensitive internals.
 
 Available cache providers:
 
