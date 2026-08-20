@@ -1,4 +1,7 @@
 spring:
+  config:
+    import: optional:file:.env[.properties]
+
   application:
     name: pokemon-api-bff
   datasource:
@@ -19,9 +22,19 @@ spring:
     open-in-view: false
 
 logging:
+  file:
+    name: logs/pokemon-api-bff.log
+
+  level:
+    root: INFO
+    org.springframework.web: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+
   structured:
     format:
       console: ecs
+      file: ecs
 
 management:
   health:
