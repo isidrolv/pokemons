@@ -24,9 +24,20 @@ logging:
       console: ecs
 
 management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info
+  endpoint:
+    health:
+      show-components: always
+      show-details: always
   health:
     redis:
       enabled: ${MANAGEMENT_HEALTH_REDIS_ENABLED:false}
+
+springdoc:
+  show-actuator: true
 
 pokemon:
   cache:

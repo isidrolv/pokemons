@@ -144,6 +144,7 @@ All endpoints are under the `/api/pokemons` base path.
 | `DELETE` | `/api/pokemons/{id}` | Delete a locally-stored Pokémon. |
 
 Interactive Swagger UI is available at `http://localhost:8080/swagger-ui.html`.
+Actuator health endpoints are exposed at `http://localhost:8080/actuator/health` and also included in the OpenAPI/Swagger view.
 
 ### Database Schema
 
@@ -185,6 +186,8 @@ spring:
 pokeapi:
   url: https://pokeapi.co/api/v2
 ```
+
+Actuator is configured to expose `health` and `info` over HTTP, and `health` always shows component-level details (for example `db` and `redis` when enabled).
 
 Available cache providers:
 
