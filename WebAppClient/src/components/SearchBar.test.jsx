@@ -7,14 +7,16 @@ describe('SearchBar', () => {
     const onChange = vi.fn()
     const onSubmit = vi.fn()
 
-    render(<SearchBar value="  pikachu  " onChange={onChange} onSubmit={onSubmit} />)
+    const { rerender } = render(<SearchBar value="" onChange={onChange} onSubmit={onSubmit} />)
 
     fireEvent.change(screen.getByLabelText('Buscar pokemon por nombre o id'), {
-      target: { value: 'raichu' },
+      target: { value: '  raichu  ' },
     })
+    expect(onChange).toHaveBeenCalledWith('  raichu  ')
+
+    rerender(<SearchBar value="  raichu  " onChange={onChange} onSubmit={onSubmit} />)
     fireEvent.submit(screen.getByRole('button', { name: 'Buscar' }).closest('form'))
 
-    expect(onChange).toHaveBeenCalledWith('raichu')
-    expect(onSubmit).toHaveBeenCalledWith('pikachu')
+    expect(onSubmit).toHaveBeenCalledWith('raichu')
   })
 })
