@@ -1,11 +1,7 @@
 package com.pokemon.bff.service;
 
 import com.pokemon.bff.client.PokemonClient;
-import com.pokemon.bff.client.dto.EvolutionChainResponse;
-import com.pokemon.bff.client.dto.PokemonDetailsResponse;
-import com.pokemon.bff.client.dto.PokemonListResponse;
-import com.pokemon.bff.client.dto.PokemonReference;
-import com.pokemon.bff.client.dto.PokemonSpeciesResponse;
+import com.pokemon.bff.client.dto.*;
 import com.pokemon.bff.config.PokemonCacheNames;
 import com.pokemon.bff.persistence.repository.PokemonRepository;
 import com.pokemon.bff.sync.PokemonSyncService;
@@ -21,10 +17,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 class PokemonServiceCachingTest {
 

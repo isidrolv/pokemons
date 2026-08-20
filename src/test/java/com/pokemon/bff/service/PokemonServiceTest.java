@@ -2,11 +2,7 @@ package com.pokemon.bff.service;
 
 import com.pokemon.bff.client.PokemonClient;
 import com.pokemon.bff.client.dto.*;
-import com.pokemon.bff.dto.PokemonDetail;
-import com.pokemon.bff.dto.PokemonItem;
-import com.pokemon.bff.dto.PokemonCreateRequest;
-import com.pokemon.bff.dto.PokemonUpdateRequest;
-import com.pokemon.bff.dto.PokemonStat;
+import com.pokemon.bff.dto.*;
 import com.pokemon.bff.persistence.entity.PokemonEntity;
 import com.pokemon.bff.persistence.entity.PokemonMetadataEntity;
 import com.pokemon.bff.persistence.repository.PokemonRepository;
@@ -25,7 +21,8 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class PokemonServiceTest {
