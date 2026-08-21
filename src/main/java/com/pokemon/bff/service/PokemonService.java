@@ -11,9 +11,15 @@ import com.pokemon.bff.persistence.entity.PokemonSkillEntity;
 import com.pokemon.bff.persistence.entity.PokemonStatEntity;
 import com.pokemon.bff.persistence.repository.PokemonRepository;
 import com.pokemon.bff.sync.PokemonSyncService;
+import feign.FeignException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,9 +28,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.NoSuchElementException;
+import java.util.Optional;
 
 @Service
 public class PokemonService {
+    private static final Logger LOG = LoggerFactory.getLogger(PokemonService.class);
+
     private final PokemonClient client;
     private final PokemonSyncService syncService;
     private final PokemonRepository pokemonRepository;
@@ -44,7 +53,15 @@ public class PokemonService {
 
     @Cacheable(cacheNames = PokemonCacheNames.POKEMON_PAGE,
             key = "T(com.pokemon.bff.service.PokemonCacheKeys).page(#page, #size)", sync = true)
+    @Transactional(readOnly = true)
     public PokemonPage findPage(int page, int size) {
+        Page<PokemonEntity> localPage = pokemonRepository.findAll(
+                PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "id")));
+        if (localPage != null && localPage.hasContent()) {
+            var localItems = localPage.getContent().stream().map(this::toPokemonItemFromLocal).toList();
+            return new PokemonPage(localItems, page, size, (int) localPage.getTotalElements(), localPage.getTotalPages());
+        }
+
         var list = client.findAll(page * size, size);
         var items = list.results().stream().map(reference -> map(reference.name())).toList();
         return new PokemonPage(items, page, size, list.count(), (list.count() + size - 1) / size);
@@ -154,41 +171,53 @@ public class PokemonService {
         pokemonRepository.delete(entity);
     }
 
+    @Transactional(readOnly = true)
     public PokemonDetail findByNameOrId(String pokemon) {
         String normalized = PokemonCacheKeys.pokemon(pokemon);
         if (normalized.isBlank()) {
             throw new IllegalArgumentException("Pokemon identifier must not be blank");
         }
-        var detail = self.fetchDetailFromApi(normalized);
-        syncService.syncDetail(detail);
-        return detail;
+        return self.fetchDetailFromApi(normalized);
     }
 
     @Cacheable(cacheNames = PokemonCacheNames.POKEMON_DETAIL,
             key = "T(com.pokemon.bff.service.PokemonCacheKeys).pokemon(#pokemon)", sync = true)
+    @Transactional(readOnly = true)
     public PokemonDetail fetchDetailFromApi(String pokemon) {
+        PokemonEntity localEntity = findLocalByIdentifier(pokemon);
+        if (localEntity != null) {
+            return toPokemonDetailFromLocal(localEntity);
+        }
+
         var details = client.findByNameOrId(pokemon);
-        var species = client.findSpeciesByNameOrId(pokemon);
-        var evolution = client.findEvolutionChainById(extractEvolutionChainId(species));
+        var species = findSpeciesByNameOrIdSafely(pokemon);
+        var evolution = findEvolutionSafely(species);
 
         var image = details.sprites() == null ? null : details.sprites().frontDefault();
         var coreStats = details.stats() == null ? List.<PokemonStat>of() : details.stats().stream()
                 .filter(statSlot -> statSlot != null && statSlot.stat() != null)
                 .map(statSlot -> new PokemonStat(statSlot.stat().name(), statSlot.baseStat()))
                 .toList();
-        var description = findEnglishDescription(species);
+        var description = species == null ? null : findEnglishDescription(species);
         var lineage = evolution == null || evolution.chain() == null
                 ? new EvolutionNode(details.name(), List.of())
                 : mapEvolutionChain(evolution.chain());
 
-        return new PokemonDetail(details.id(), details.name(), image, details.height() / 10.0,
+        var detail = new PokemonDetail(details.id(), details.name(), image, details.height() / 10.0,
                 details.weight() / 10.0, coreStats, description, lineage);
+        syncService.syncDetail(detail);
+        return detail;
     }
 
     private PokemonItem map(String name) {
+        PokemonEntity localEntity = findLocalByIdentifier(name);
+        if (localEntity != null) {
+            return toPokemonItemFromLocal(localEntity);
+        }
+
         var details = client.findByNameOrId(name);
-        var species = client.findSpeciesByNameOrId(name);
-        String category = findEnglishCategory(species);
+        var species = findSpeciesByNameOrIdSafely(name);
+        String category = species == null ? null : findEnglishCategory(species);
         var skills = details.abilities() == null ? List.<Skill>of() : details.abilities().stream()
                 .filter(a -> a != null && a.ability() != null)
                 .map(a -> new Skill(a.ability().name(), a.ability().url())).toList();
@@ -197,6 +226,88 @@ public class PokemonService {
                 category, details.weight() / 10.0, skills);
         syncService.syncItem(item);
         return item;
+    }
+
+    private PokemonEntity findLocalByIdentifier(String identifier) {
+        String normalized = PokemonCacheKeys.pokemon(identifier);
+        if (normalized.isBlank()) {
+            return null;
+        }
+
+        Integer parsedId = tryParsePositiveInt(normalized);
+        if (parsedId != null) {
+            Optional<PokemonEntity> byId = pokemonRepository.findById(parsedId);
+            if (byId != null && byId.isPresent()) {
+                return byId.get();
+            }
+        }
+
+        Optional<PokemonEntity> byName = pokemonRepository.findByName(normalized);
+        if (byName != null && byName.isPresent()) {
+            return byName.get();
+        }
+        return null;
+    }
+
+    private Integer tryParsePositiveInt(String value) {
+        try {
+            int parsed = Integer.parseInt(value);
+            return parsed > 0 ? parsed : null;
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
+    private PokemonItem toPokemonItemFromLocal(PokemonEntity entity) {
+        var skills = entity.getSkills() == null ? List.<Skill>of() : entity.getSkills().stream()
+                .map(skill -> new Skill(skill.getName(), skill.getUrl()))
+                .toList();
+        String category = entity.getMetadata() == null ? null : entity.getMetadata().getClassificationTag();
+        return new PokemonItem(
+                entity.getId(),
+                entity.getName(),
+                entity.getImageUrl(),
+                category,
+                entity.getWeight(),
+                skills
+        );
+    }
+
+    private PokemonDetail toPokemonDetailFromLocal(PokemonEntity entity) {
+        var stats = entity.getStats() == null ? List.<PokemonStat>of() : entity.getStats().stream()
+                .map(stat -> new PokemonStat(stat.getName(), stat.getValue()))
+                .toList();
+        return new PokemonDetail(
+                entity.getId(),
+                entity.getName(),
+                entity.getImageUrl(),
+                entity.getHeight() == null ? 0.0 : entity.getHeight(),
+                entity.getWeight() == null ? 0.0 : entity.getWeight(),
+                stats,
+                entity.getDescription(),
+                new EvolutionNode(entity.getName(), List.of())
+        );
+    }
+
+    private PokemonSpeciesResponse findSpeciesByNameOrIdSafely(String nameOrId) {
+        try {
+            return client.findSpeciesByNameOrId(nameOrId);
+        } catch (FeignException.NotFound notFound) {
+            LOG.warn("Pokemon species not found for '{}'. Returning fallback species data.", nameOrId);
+            return null;
+        }
+    }
+
+    private EvolutionChainResponse findEvolutionSafely(PokemonSpeciesResponse species) {
+        if (species == null) {
+            return null;
+        }
+        try {
+            return client.findEvolutionChainById(extractEvolutionChainId(species));
+        } catch (IllegalStateException invalidEvolutionData) {
+            LOG.warn("Pokemon species has invalid evolution chain metadata. Returning fallback lineage.");
+            return null;
+        }
     }
 
     private String findEnglishCategory(PokemonSpeciesResponse species) {
@@ -272,9 +383,11 @@ public class PokemonService {
         if (request.name() != null && request.name().isBlank()) {
             throw new IllegalArgumentException("Pokemon name must not be blank");
         }
+        boolean hasNoStatChanges = request.stats() == null || request.stats().isEmpty();
+        boolean hasNoSkillChanges = request.skills() == null || request.skills().isEmpty();
         if (request.name() == null && request.imageUrl() == null && request.height() == null
-                && request.weight() == null && request.description() == null && request.stats() == null
-                && request.skills() == null && request.localizedName() == null
+                && request.weight() == null && request.description() == null && hasNoStatChanges
+                && hasNoSkillChanges && request.localizedName() == null
                 && request.region() == null && request.classificationTag() == null) {
             throw new IllegalArgumentException("At least one field must be provided");
         }
@@ -330,5 +443,9 @@ public class PokemonService {
         } catch (NumberFormatException e) {
             throw new IllegalStateException("Invalid evolution chain URL: " + url, e);
         }
-}
+    }
+
+    public PokemonPage searchPokemonsWhichContains(String query, int page, int size) {
+        return null;
+    }
 }

@@ -2,13 +2,16 @@ import { useCallback, useEffect, useState } from 'react'
 import SearchBar from './components/SearchBar'
 import PokemonCard from './components/PokemonCard'
 import Pagination from './components/Pagination'
+import LoginDialog from './components/LoginDialog'
 import { fetchPokemonByName, fetchPokemonPage } from './api/pokemonApi'
+import { useAuth } from './context/AuthContext'
 import './App.css'
 
 const DEFAULT_SIZE = 20
 const MIN_CHARS_FOR_LIVE_FILTER = 1
 
 function App() {
+  const { isAuthenticated, username, logout } = useAuth()
   const [page, setPage] = useState(0)
   const [size, setSize] = useState(DEFAULT_SIZE)
   const [pageData, setPageData] = useState({ items: [], totalPages: 0, totalElements: 0 })
@@ -36,10 +39,10 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (searchTerm === null) {
+    if (isAuthenticated && searchTerm === null) {
       loadPage(page, size)
     }
-  }, [page, size, searchTerm, loadPage])
+  }, [isAuthenticated, page, size, searchTerm, loadPage])
 
   // Filtrado incremental: a partir de 1 caracter, filtra sobre lo que ya
   // está en memoria (la página actual); si aún no hay nada cargado, lo pide al API primero.
@@ -134,13 +137,30 @@ function App() {
       : pageData.items
   const isLoading = loading || liveFilterLoading
 
+  if (!isAuthenticated) {
+    return <LoginDialog />
+  }
+
   return (
     <div className="app">
       <header className="app__header">
+        <button className="app__logout" type="button" onClick={logout}>
+          Cerrar sesión ({username})
+        </button>
         <h1 className="app__title">Pokedex</h1>
         <p className="app__subtitle">Busca tu pokemon favorito por nombre o id</p>
         <SearchBar value={query} onChange={handleQueryChange} onSubmit={handleSubmit} />
       </header>
+      {!isSearching && !isLiveFiltering && !isLoading && !error && pageData.totalPages > 0 && (
+          <Pagination
+              page={page}
+              size={size}
+              totalPages={pageData.totalPages}
+              totalElements={pageData.totalElements}
+              onPageChange={handlePageChange}
+              onSizeChange={handleSizeChange}
+          />
+      )}
 
       <main className="app__main">
         {isLoading && <p className="app__status">Cargando...</p>}

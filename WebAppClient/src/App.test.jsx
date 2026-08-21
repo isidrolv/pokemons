@@ -7,7 +7,12 @@ vi.mock('./api/pokemonApi', () => ({
   fetchPokemonByName: vi.fn(),
 }))
 
+vi.mock('./context/AuthContext', () => ({
+  useAuth: vi.fn(),
+}))
+
 import { fetchPokemonByName, fetchPokemonPage } from './api/pokemonApi'
+import { useAuth } from './context/AuthContext'
 
 const pagePayload = {
   items: [
@@ -31,9 +36,24 @@ beforeEach(() => {
     mass: 6,
     tags: ['electric'],
   })
+  useAuth.mockReturnValue({
+    isAuthenticated: true,
+    username: 'ash',
+    logout: vi.fn(),
+  })
 })
 
 describe('App', () => {
+  it('shows the login dialog instead of the dashboard when not authenticated', () => {
+    useAuth.mockReturnValue({ isAuthenticated: false, username: null, logout: vi.fn() })
+
+    render(<App />)
+
+    expect(screen.getByRole('heading', { name: 'Pokedex' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Usuario')).toBeInTheDocument()
+    expect(fetchPokemonPage).not.toHaveBeenCalled()
+  })
+
   it('loads and renders paginated pokemon list', async () => {
     render(<App />)
 

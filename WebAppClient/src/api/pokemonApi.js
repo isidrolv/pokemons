@@ -1,5 +1,28 @@
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/pokemons'
 
+let authToken = null
+let unauthorizedHandler = null
+
+export function setAuthToken(token) {
+  authToken = token
+}
+
+export function setUnauthorizedHandler(handler) {
+  unauthorizedHandler = handler
+}
+
+function authHeaders() {
+  return authToken ? { Authorization: `Bearer ${authToken}` } : {}
+}
+
+async function authorizedFetch(url) {
+  const response = await fetch(url, { headers: authHeaders() })
+  if (response.status === 401 && unauthorizedHandler) {
+    unauthorizedHandler()
+  }
+  return response
+}
+
 function truncate(text, max) {
   if (!text) return null
   return text.length > max ? `${text.slice(0, max).trim()}…` : text
@@ -28,7 +51,7 @@ function normalizeDetail(detail) {
 }
 
 export async function fetchPokemonPage(page, size) {
-  const response = await fetch(`${BASE_URL}?page=${page}&size=${size}`)
+  const response = await authorizedFetch(`${BASE_URL}?page=${page}&size=${size}`)
   if (!response.ok) {
     throw new Error(`No se pudo obtener el listado de pokemones (HTTP ${response.status})`)
   }
@@ -43,7 +66,7 @@ export async function fetchPokemonPage(page, size) {
 }
 
 export async function fetchPokemonByName(name) {
-  const response = await fetch(`${BASE_URL}/${encodeURIComponent(name)}`)
+  const response = await authorizedFetch(`${BASE_URL}/${encodeURIComponent(name)}`)
   if (response.status === 404) {
     return null
   }

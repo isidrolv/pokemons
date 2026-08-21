@@ -7,12 +7,16 @@ import com.pokemon.bff.persistence.entity.PokemonEntity;
 import com.pokemon.bff.persistence.entity.PokemonMetadataEntity;
 import com.pokemon.bff.persistence.repository.PokemonRepository;
 import com.pokemon.bff.sync.PokemonSyncService;
+import feign.FeignException;
+import feign.Request;
 import net.datafaker.Faker;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 import java.time.Instant;
 import java.util.List;
@@ -138,6 +142,21 @@ class PokemonServiceTest {
     }
 
     @Test
+    void shouldReturnPageFromLocalDatabaseBeforePokeApi() {
+        PokemonEntity local = new PokemonEntity(1, "bulbasaur", "img-local", 0.7, 6.9, "local", Instant.now());
+        local.setMetadata(new PokemonMetadataEntity());
+        local.getMetadata().setClassificationTag("STARTER");
+        when(pokemonRepository.findAll(any(org.springframework.data.domain.Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(local), PageRequest.of(0, 20), 1));
+
+        var page = service.findPage(0, 20);
+
+        assertEquals(1, page.content().size());
+        assertEquals("bulbasaur", page.content().getFirst().name());
+        verify(client, org.mockito.Mockito.never()).findAll(any(Integer.class), any(Integer.class));
+    }
+
+    @Test
     void shouldReturnNullCategoryAndEmptySkillsWhenDataMissing() {
         when(client.findAll(0, 1)).thenReturn(new PokemonListResponse(1, List.of(new PokemonReference("ditto", "u-ditto"))));
         when(client.findByNameOrId("ditto")).thenReturn(new PokemonDetailsResponse(
@@ -154,6 +173,20 @@ class PokemonServiceTest {
         assertNull(page.content().getFirst().category());
         assertNull(page.content().getFirst().sprite());
         assertEquals(0, page.content().getFirst().skills().size());
+    }
+
+    @Test
+    void shouldReturnNullCategoryWhenSpeciesIsNotFoundInPageMapping() {
+        when(client.findAll(0, 1)).thenReturn(new PokemonListResponse(1, List.of(new PokemonReference("basculin-red-striped", "u"))));
+        when(client.findByNameOrId("basculin-red-striped")).thenReturn(new PokemonDetailsResponse(
+                550, "basculin-red-striped", 10, 180, new PokemonDetailsResponse.Sprites("img"), List.of(), null));
+        when(client.findSpeciesByNameOrId("basculin-red-striped")).thenThrow(notFound("basculin-red-striped"));
+
+        var page = service.findPage(0, 1);
+
+        assertEquals(1, page.content().size());
+        assertEquals("basculin-red-striped", page.content().getFirst().name());
+        assertNull(page.content().getFirst().category());
     }
 
     @Test
@@ -181,7 +214,7 @@ class PokemonServiceTest {
     }
 
     @Test
-    void shouldThrowWhenEvolutionChainUrlIsMissing() {
+    void shouldReturnFallbackLineageWhenEvolutionChainUrlIsMissing() {
         when(client.findByNameOrId("mew")).thenReturn(new PokemonDetailsResponse(
                 151, "mew", 4, 40, null, List.of(), List.of()));
         when(client.findSpeciesByNameOrId("mew")).thenReturn(new PokemonSpeciesResponse(
@@ -189,11 +222,14 @@ class PokemonServiceTest {
                 List.of(),
                 null));
 
-        assertThrows(IllegalStateException.class, () -> service.findByNameOrId("mew"));
+        var detail = service.findByNameOrId("mew");
+
+        assertEquals("mew", detail.evolutionLineage().name());
+        assertEquals(0, detail.evolutionLineage().evolvesTo().size());
     }
 
     @Test
-    void shouldThrowWhenEvolutionChainUrlIsInvalid() {
+    void shouldReturnFallbackLineageWhenEvolutionChainUrlIsInvalid() {
         when(client.findByNameOrId("mewtwo")).thenReturn(new PokemonDetailsResponse(
                 150, "mewtwo", 20, 1220, null, List.of(), List.of()));
         when(client.findSpeciesByNameOrId("mewtwo")).thenReturn(new PokemonSpeciesResponse(
@@ -201,7 +237,37 @@ class PokemonServiceTest {
                 List.of(),
                 new PokemonSpeciesResponse.EvolutionChain("invalid-url")));
 
-        assertThrows(IllegalStateException.class, () -> service.findByNameOrId("mewtwo"));
+        var detail = service.findByNameOrId("mewtwo");
+
+        assertEquals("mewtwo", detail.evolutionLineage().name());
+        assertEquals(0, detail.evolutionLineage().evolvesTo().size());
+    }
+
+    @Test
+    void shouldReturnFallbackDetailWhenSpeciesIsNotFound() {
+        when(client.findByNameOrId("basculin-red-striped")).thenReturn(new PokemonDetailsResponse(
+                550, "basculin-red-striped", 10, 180, null, List.of(), List.of()));
+        when(client.findSpeciesByNameOrId("basculin-red-striped")).thenThrow(notFound("basculin-red-striped"));
+
+        var detail = service.findByNameOrId("basculin-red-striped");
+
+        assertEquals("basculin-red-striped", detail.name());
+        assertNull(detail.description());
+        assertEquals("basculin-red-striped", detail.evolutionLineage().name());
+        assertEquals(0, detail.evolutionLineage().evolvesTo().size());
+    }
+
+    @Test
+    void shouldReturnDetailFromLocalDatabaseBeforePokeApi() {
+        PokemonEntity local = new PokemonEntity(7, "squirtle", "img-local", 0.5, 9.0, "local desc", Instant.now());
+        local.getStats().add(new com.pokemon.bff.persistence.entity.PokemonStatEntity(local, "hp", 44));
+        when(pokemonRepository.findByName("squirtle")).thenReturn(Optional.of(local));
+
+        var detail = service.findByNameOrId("squirtle");
+
+        assertEquals("squirtle", detail.name());
+        assertEquals("local desc", detail.description());
+        verify(client, org.mockito.Mockito.never()).findByNameOrId("squirtle");
     }
 
     @Test
@@ -460,5 +526,16 @@ class PokemonServiceTest {
                         null,
                         null)));
         assertThrows(java.util.NoSuchElementException.class, () -> service.deletePokemon(404));
+    }
+
+    private static FeignException.NotFound notFound(String pokemon) {
+        Request request = Request.create(
+                Request.HttpMethod.GET,
+                "https://pokeapi.co/api/v2/pokemon-species/" + pokemon,
+                java.util.Collections.emptyMap(),
+                null,
+                null,
+                null);
+        return new FeignException.NotFound("Not Found", request, null, java.util.Collections.emptyMap());
     }
 }

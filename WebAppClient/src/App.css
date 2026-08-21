@@ -11,6 +11,27 @@
   width: 100%;
   padding: 3rem 1.5rem 2rem;
   text-align: center;
+  position: relative;
+}
+
+.app__logout {
+  position: absolute;
+  top: 1rem;
+  right: 1.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background-color: transparent;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.app__logout:hover {
+  color: var(--text);
+  border-color: var(--accent);
 }
 
 .app__title {
