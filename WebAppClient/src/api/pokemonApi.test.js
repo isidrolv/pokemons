@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fetchPokemonByName, fetchPokemonPage } from './pokemonApi'
+import { fetchPokemonByName, fetchPokemonPage, setAuthToken, setUnauthorizedHandler } from './pokemonApi'
 
 afterEach(() => {
   vi.restoreAllMocks()
+  setAuthToken(null)
+  setUnauthorizedHandler(null)
 })
 
 describe('pokemonApi', () => {
@@ -32,7 +34,7 @@ describe('pokemonApi', () => {
 
     const result = await fetchPokemonPage(1, 20)
 
-    expect(fetch).toHaveBeenCalledWith('/api/pokemons?page=1&size=20')
+    expect(fetch).toHaveBeenCalledWith('/api/pokemons?page=1&size=20', { headers: {} })
     expect(result).toEqual({
       items: [
         {
@@ -103,7 +105,7 @@ describe('pokemonApi', () => {
 
     const result = await fetchPokemonByName('bulbasaur')
 
-    expect(fetch).toHaveBeenCalledWith('/api/pokemons/bulbasaur')
+    expect(fetch).toHaveBeenCalledWith('/api/pokemons/bulbasaur', { headers: {} })
     expect(result).toEqual({
       id: 1,
       name: 'Bulbasaur',
@@ -112,5 +114,38 @@ describe('pokemonApi', () => {
       mass: 6.9,
       tags: ['hp: 45', 'attack: 49'],
     })
+  })
+
+  it('attaches the bearer token to requests once set', async () => {
+    setAuthToken('test-token')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 }),
+      }),
+    )
+
+    await fetchPokemonPage(0, 20)
+
+    expect(fetch).toHaveBeenCalledWith('/api/pokemons?page=0&size=20', {
+      headers: { Authorization: 'Bearer test-token' },
+    })
+  })
+
+  it('notifies the unauthorized handler on a 401 response', async () => {
+    const onUnauthorized = vi.fn()
+    setUnauthorizedHandler(onUnauthorized)
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 401,
+      }),
+    )
+
+    await expect(fetchPokemonPage(0, 20)).rejects.toThrow()
+
+    expect(onUnauthorized).toHaveBeenCalledTimes(1)
   })
 })

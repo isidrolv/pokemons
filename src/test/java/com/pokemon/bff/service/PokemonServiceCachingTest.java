@@ -46,7 +46,7 @@ class PokemonServiceCachingTest {
             verify(client, times(1)).findByNameOrId("pikachu");
             verify(client, times(1)).findSpeciesByNameOrId("pikachu");
             verify(client, times(1)).findEvolutionChainById(10);
-            verify(syncService, times(2)).syncDetail(any());
+            verify(syncService, times(1)).syncDetail(any());
         }
     }
 
